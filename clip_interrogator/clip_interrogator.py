@@ -207,7 +207,8 @@ class Interrogator():
         then listing the artist, trending, movement, and flavor text modifiers."""
         caption = caption or self.generate_caption(image)
         image_features = self.image_to_features(image)
-
+        
+        print(type(caption))
         medium = self.mediums.rank(image_features, 1)[0]
         artist = self.artists.rank(image_features, 1)[0]
         trending = self.trendings.rank(image_features, 1)[0]
@@ -221,6 +222,23 @@ class Interrogator():
 
         return _truncate_to_fit(prompt, self.tokenize)
 
+    def embedding_to_prompt(self, image_features: torch.Tensor, caption: str, max_flavors: int = 3) -> str:
+        """After clustering. Customized."""
+        #caption = caption
+        print(type(caption))
+        medium = self.mediums.rank(image_features, 1)[0]
+        artist = self.artists.rank(image_features, 1)[0]
+        trending = self.trendings.rank(image_features, 1)[0]
+        movement = self.movements.rank(image_features, 1)[0]
+        flaves = ", ".join(self.flavors.rank(image_features, max_flavors))
+
+        if caption.startswith(medium):
+            prompt = f"{caption} {artist}, {trending}, {movement}, {flaves}"
+        else:
+            prompt = f"{caption}, {medium} {artist}, {trending}, {movement}, {flaves}"
+
+        return _truncate_to_fit(prompt, self.tokenize)
+    
     def interrogate_fast(self, image: Image, max_flavors: int=32, caption: Optional[str]=None) -> str:
         """Fast mode simply adds the top ranked terms after a caption. It generally results in 
         better similarity between generated prompt and image than classic mode, but the prompts
@@ -253,6 +271,7 @@ class Interrogator():
         classic_prompt = self.interrogate_classic(image, max_flavors, caption=caption)
         candidates = [caption, classic_prompt, fast_prompt, best_prompt]
         return candidates[np.argmax(self.similarities(image_features, candidates))]
+        
 
     def rank_top(self, image_features: torch.Tensor, text_array: List[str], reverse: bool=False) -> str:
         self._prepare_clip()
